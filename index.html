@@ -657,17 +657,25 @@ function onEqKey(e,id){
 // ════════════════════════════════════════════
 //  學生端：送出借用申請
 // ════════════════════════════════════════════
-function submitBorrow(e){
+const GAS_URL='https://script.google.com/a/macros/hust.edu.tw/s/AKfycbz7Iop1EXsJyVUv0_QBZlMvup6bmD7p6JZUu_Xr7fML3hiD2K1rMD_9MazPRUMAEpTnwg/exec';
+
+async function submitBorrow(e){
   e.preventDefault();
   const rows=[...document.querySelectorAll('#equipRows .equip-row')];
   const items=rows.map(r=>({name:r.querySelector('input[type=text]').value.trim(),code:r.dataset.code||'自填',qty:r.querySelector('input[type=number]').value})).filter(i=>i.name);
   if(!items.length){alert('請至少填寫一項器材');return;}
   const borrow=document.getElementById('f-borrow').value, ret=document.getElementById('f-return').value;
   if(ret<borrow){alert('歸還日不能早於借用日');return;}
-  const base={id:'B'+Date.now(),time:new Date().toLocaleString('zh-TW'),name:document.getElementById('f-name').value.trim(),sid:document.getElementById('f-sid').value.trim(),cls:document.getElementById('f-class').value,phone:document.getElementById('f-phone').value.trim(),purpose:document.getElementById('f-purpose').value,borrow,return:ret,note:document.getElementById('f-note').value.trim(),status:'借出中'};
+  const payload={id:'B'+Date.now(),time:new Date().toLocaleString('zh-TW'),name:document.getElementById('f-name').value.trim(),sid:document.getElementById('f-sid').value.trim(),cls:document.getElementById('f-class').value,phone:document.getElementById('f-phone').value.trim(),purpose:document.getElementById('f-purpose').value,borrow,return:ret,note:document.getElementById('f-note').value.trim(),items};
   const recs=getRecs();
-  items.forEach((item,i)=>recs.push({...base,id:base.id+(i?'-'+(i+1):''),equipName:item.name,equipCode:item.code,qty:item.qty}));
+  items.forEach((item,i)=>recs.push({...payload,id:payload.id+(i?'-'+(i+1):''),equipName:item.name,equipCode:item.code,qty:item.qty,status:'借出中'}));
   saveRecs(recs);
+  const btn=document.querySelector('.btn-submit');
+  btn.textContent='送出中…';btn.disabled=true;
+  try{
+    await fetch(GAS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+  }catch(err){console.warn('雲端同步失敗，資料已存本機',err);}
+  btn.textContent='✅ 送出借用申請';btn.disabled=false;
   document.getElementById('sumList').innerHTML=items.map(i=>`<li><span>${i.code}</span>${i.equipName} × ${i.qty} 件</li>`).join('');
   document.getElementById('borrowForm').style.display='none';
   document.getElementById('successBox').style.display='block';
